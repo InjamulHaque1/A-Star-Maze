@@ -1,5 +1,4 @@
 import tkinter as tk
-import numpy as np
 import time
 import math
 import heapq
@@ -119,69 +118,111 @@ def a_star_search(grid, src, dest, heuristic):
 class PathfindingApp:
     def __init__(self, master, grid, path_manhattan, path_diagonal, src, dest):
         self.master = master
-        self.master.title("A* Pathfinding Visualization")  # Change window name
+        self.master.title("A* Pathfinding Visualization")
         self.grid = grid
         self.path_manhattan = path_manhattan
         self.path_diagonal = path_diagonal
         self.src = src
         self.dest = dest
-        self.cell_size = 40
-        self.create_heading()  # Add heading at the top
+        self.cell_size = 45
+        self.master.state('zoomed')
+
+        # Create a Canvas for scrollable content and add vertical scrollbar
+        self.main_canvas = tk.Canvas(self.master)
+        self.main_canvas.pack(side="left", fill="both", expand=True)
+
+        # Vertical scrollbar
+        self.scroll_y = tk.Scrollbar(self.master, orient="vertical", command=self.main_canvas.yview)
+        self.scroll_y.pack(side="right", fill="y")
+
+        # Configure Canvas to use the scrollbar
+        self.main_canvas.configure(yscrollcommand=self.scroll_y.set)
+
+        # Create frame inside canvas
+        self.scrollable_frame = tk.Frame(self.main_canvas)
+        self.main_canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+
+        # Bind resizing event to update scroll region
+        self.scrollable_frame.bind("<Configure>", lambda e: self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all")))
+
+        # Make sure scrolling works with the mouse wheel
+        self.main_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+        # Initialize GUI components in the scrollable frame
+        self.create_heading()
         self.create_layout()
         self.create_tables()
+        time.sleep(2)
         self.animate_paths()
 
+    def _on_mousewheel(self, event):
+        # Allows for mouse wheel scrolling
+        self.main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
     def create_heading(self):
-        # Create a frame for the heading
-        heading_frame = tk.Frame(self.master, pady=10)
+        heading_frame = tk.Frame(self.scrollable_frame)
         heading_frame.grid(row=0, column=0, columnspan=3)
-        
-        # Heading label
-        heading_label = tk.Label(heading_frame, text="Manhattan Heuristric VS Diagonal Heuristic", font=("Arial", 16, "bold"))
+        heading_label = tk.Label(heading_frame, text="Here is the dynamic table of Manhattan Heuristic and Diagonal Heuristic respectively:", font=("Calibri", 16, "bold"))
         heading_label.pack()
 
     def create_layout(self):
-        # Set up frames for the layout
-        self.frame_manhattan = tk.Frame(self.master, bg='white')
+        self.frame_manhattan = tk.Frame(self.scrollable_frame, bg='white')
         self.frame_manhattan.grid(row=1, column=0)
 
-        self.frame_diagonal = tk.Frame(self.master, bg='white')
+        self.frame_diagonal = tk.Frame(self.scrollable_frame, bg='white')
         self.frame_diagonal.grid(row=1, column=1)
 
-        self.frame_value_table = tk.Frame(self.master)
+        self.frame_value_table = tk.Frame(self.scrollable_frame)
         self.frame_value_table.grid(row=1, column=2)
 
-        # Canvases for Manhattan and Diagonal paths
-        self.canvas_manhattan = tk.Canvas(self.frame_manhattan, width=self.cell_size * len(self.grid[0]),
-                                          height=self.cell_size * len(self.grid), bg='indigo')
+        # Create canvases
+        self.canvas_manhattan = tk.Canvas(self.frame_manhattan, width=self.cell_size * len(self.grid[0]), height=self.cell_size * len(self.grid), bg='indigo')
         self.canvas_manhattan.pack()
 
-        self.canvas_diagonal = tk.Canvas(self.frame_diagonal, width=self.cell_size * len(self.grid[0]),
-                                         height=self.cell_size * len(self.grid), bg='indigo')
+        self.canvas_diagonal = tk.Canvas(self.frame_diagonal, width=self.cell_size * len(self.grid[0]), height=self.cell_size * len(self.grid), bg='indigo')
         self.canvas_diagonal.pack()
 
-        # Draw obstacles and layout on canvases
+        # Draw grid cells
         for i in range(len(self.grid)):
             for j in range(len(self.grid[0])):
                 color = 'yellow' if self.grid[i][j] == 0 else 'indigo'
-                self.canvas_manhattan.create_rectangle(j * self.cell_size, i * self.cell_size,
-                                                        (j + 1) * self.cell_size, (i + 1) * self.cell_size, fill=color)
-                self.canvas_diagonal.create_rectangle(j * self.cell_size, i * self.cell_size,
-                                                      (j + 1) * self.cell_size, (i + 1) * self.cell_size, fill=color)
+                # Draw cell
+                self.canvas_manhattan.create_rectangle(j * self.cell_size, i * self.cell_size, 
+                                                        (j + 1) * self.cell_size, (i + 1) * self.cell_size, 
+                                                        fill=color)
+                self.canvas_diagonal.create_rectangle(j * self.cell_size, i * self.cell_size, 
+                                                        (j + 1) * self.cell_size, (i + 1) * self.cell_size, 
+                                                        fill=color)
 
-        # Draw start and destination points
+        # Draw y-axis labels
+        for i in range(len(self.grid)):
+            self.canvas_manhattan.create_text(-20, i * self.cell_size + self.cell_size // 2, 
+                                                text=str(i), fill='black', font=("Arial", 8), anchor='e')
+            self.canvas_diagonal.create_text(-20, i * self.cell_size + self.cell_size // 2, 
+                                            text=str(i), fill='black', font=("Arial", 8), anchor='e')
+
+        # Draw x-axis labels
+        for j in range(len(self.grid[0])):
+            self.canvas_manhattan.create_text(j * self.cell_size + self.cell_size // 2, 
+                                                len(self.grid) * self.cell_size + 10, 
+                                                text=str(j), fill='black', font=("Arial", 8))
+            self.canvas_diagonal.create_text(j * self.cell_size + self.cell_size // 2, 
+                                            len(self.grid) * self.cell_size + 10, 
+                                            text=str(j), fill='black', font=("Arial", 8))
+
+        # Draw source and destination markers
         for canvas in [self.canvas_manhattan, self.canvas_diagonal]:
-            canvas.create_oval(self.src[1] * self.cell_size + 10, self.src[0] * self.cell_size + 10,
-                               self.src[1] * self.cell_size + 30, self.src[0] * self.cell_size + 30, fill='red')
-            canvas.create_oval(self.dest[1] * self.cell_size + 10, self.dest[0] * self.cell_size + 10,
-                               self.dest[1] * self.cell_size + 30, self.dest[0] * self.cell_size + 30, fill='blue')
+            canvas.create_oval(self.src[1] * self.cell_size + 10, self.src[0] * self.cell_size + 10, 
+                            self.src[1] * self.cell_size + 30, self.src[0] * self.cell_size + 30, 
+                            fill='red')
+            canvas.create_oval(self.dest[1] * self.cell_size + 10, self.dest[0] * self.cell_size + 10, 
+                            self.dest[1] * self.cell_size + 30, self.dest[0] * self.cell_size + 30, 
+                            fill='blue')
 
     def create_tables(self):
-        # Set up frame for tables
-        self.table_frame = tk.Frame(self.master)
+        self.table_frame = tk.Frame(self.scrollable_frame)
         self.table_frame.grid(row=2, column=0, columnspan=2)
 
-        # Initialization for labels
         self.execution_time_labels = []
         self.path_labels = []
         self.total_cost_labels = []
@@ -191,43 +232,41 @@ class PathfindingApp:
         self.f_labels = []
 
         for i, heuristic in enumerate(["Manhattan", "Diagonal"]):
-            frame = tk.Frame(self.table_frame, padx=20, pady=10, relief="solid", borderwidth=1)
+            frame = tk.Frame(self.table_frame, relief="solid")
             frame.grid(row=0, column=i, padx=10)
-
-            tk.Label(frame, text=f"{heuristic} Path", font=("Arial", 10, "bold")).grid(row=0, column=0, columnspan=4)
+            tk.Label(frame, text=f"{heuristic} Steps", font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=4)
 
             headers = ["Step", "g(n)", "h(n)", "f(n)"]
             for col, header in enumerate(headers):
-                tk.Label(frame, text=header, borderwidth=1, relief="solid", padx=5, pady=5).grid(row=1, column=col, sticky="nsew")
+                tk.Label(frame, text=header, borderwidth=1, relief="solid", padx=5, pady=5, font=("Arial", 10, "bold"), bg="#FFFF00").grid(row=1, column=col, sticky="nsew")
 
             num_steps = max(len(self.path_manhattan), len(self.path_diagonal))
             for j in range(num_steps):
-                # Add labels for each step's g(n), h(n), and f(n)
-                step_label = tk.Label(frame, text="", borderwidth=1, relief="solid", padx=5, pady=5)
+                step_label = tk.Label(frame, text="", borderwidth=1, relief="solid", pady=3)
                 step_label.grid(row=j + 2, column=0, sticky="nsew")
                 self.step_labels.append(step_label)
 
-                g_label = tk.Label(frame, text="", borderwidth=1, relief="solid", padx=5, pady=5)
+                g_label = tk.Label(frame, text="", borderwidth=1, relief="solid", pady=3)
                 g_label.grid(row=j + 2, column=1, sticky="nsew")
                 self.g_labels.append(g_label)
 
-                h_label = tk.Label(frame, text="", borderwidth=1, relief="solid", padx=5, pady=5)
+                h_label = tk.Label(frame, text="", borderwidth=1, relief="solid", pady=3)
                 h_label.grid(row=j + 2, column=2, sticky="nsew")
                 self.h_labels.append(h_label)
 
-                f_label = tk.Label(frame, text="", borderwidth=1, relief="solid", padx=5, pady=5)
+                f_label = tk.Label(frame, text="", borderwidth=1, relief="solid", pady=3)
                 f_label.grid(row=j + 2, column=3, sticky="nsew")
                 self.f_labels.append(f_label)
 
-            exec_time_label = tk.Label(frame, text="Execution Time: ", font=("Arial", 9))
+            exec_time_label = tk.Label(frame, text="Execution Time: ", font=("Arial", 10, "bold"))
             exec_time_label.grid(row=num_steps + 3, column=0, columnspan=4, sticky="w", padx=5)
             self.execution_time_labels.append(exec_time_label)
 
-            path_label = tk.Label(frame, text="Path: ", font=("Arial", 9))
+            path_label = tk.Label(frame, text="Path: ", font=("Arial", 10, "bold"))
             path_label.grid(row=num_steps + 4, column=0, columnspan=4, sticky="w", padx=5)
             self.path_labels.append(path_label)
 
-            cost_label = tk.Label(frame, text="Total Cost: ", font=("Arial", 9))
+            cost_label = tk.Label(frame, text="Total Cost: ", font=("Arial", 10, "bold"))
             cost_label.grid(row=num_steps + 5, column=0, columnspan=4, sticky="w", padx=5)
             self.total_cost_labels.append(cost_label)
 
@@ -239,6 +278,7 @@ class PathfindingApp:
     def animate_paths(self):
         self.animate_path(self.canvas_manhattan, self.path_manhattan, "Manhattan", 0)
         self.animate_path(self.canvas_diagonal, self.path_diagonal, "Diagonal", 1)
+
 
     def animate_path(self, canvas, path, heuristic, table_column):
         g_n = 0
@@ -283,6 +323,11 @@ class PathfindingApp:
             time.sleep(0.3)
 
             canvas.delete("adjacent")
+            
+        for (i, j) in path:
+            canvas.create_rectangle(j * self.cell_size, i * self.cell_size,
+                                    (j + 1) * self.cell_size, (i + 1) * self.cell_size,
+                                    fill='red')
 
         canvas.delete("adjacent")
 
