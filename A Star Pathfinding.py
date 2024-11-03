@@ -1,4 +1,5 @@
 import tkinter as tk
+from time import perf_counter
 import time
 import math
 import heapq
@@ -64,15 +65,15 @@ def a_star_search(grid, src, dest, heuristic):
     ROW, COL = len(grid), len(grid[0])
     if not is_valid(src[0], src[1], ROW, COL) or not is_valid(dest[0], dest[1], ROW, COL):
         print("Source or destination is invalid")
-        return None
+        return None, 0  # Return execution time as 0
 
     if not is_unblocked(grid, src[0], src[1]) or not is_unblocked(grid, dest[0], dest[1]):
         print("Source or destination is blocked")
-        return None
+        return None, 0  # Return execution time as 0
 
     if is_destination(src[0], src[1], dest):
         print("Already at destination")
-        return [src]
+        return [src], 0  # Return execution time as 0
 
     closed_list = [[False for _ in range(COL)] for _ in range(ROW)]
     cell_details = [[Cell() for _ in range(COL)] for _ in range(ROW)]
@@ -87,6 +88,8 @@ def a_star_search(grid, src, dest, heuristic):
     open_list = []
     heapq.heappush(open_list, (0.0, i, j))
 
+    start_time = perf_counter()
+
     while open_list:
         f, i, j = heapq.heappop(open_list)
         closed_list[i][j] = True
@@ -98,7 +101,9 @@ def a_star_search(grid, src, dest, heuristic):
                 if is_destination(new_i, new_j, dest):
                     cell_details[new_i][new_j].parent_i = i
                     cell_details[new_i][new_j].parent_j = j
-                    return trace_path(cell_details, dest)
+                    end_time = perf_counter()  # End timing the algorithm
+                    execution_time = (end_time - start_time )*1000  # Calculate execution time
+                    return trace_path(cell_details, dest), execution_time  # Return path and execution time
 
                 g_new = cell_details[i][j].g + math.sqrt(dir[0]**2 + dir[1]**2)
                 h_new = calculate_h_value(new_i, new_j, dest, method=heuristic)
@@ -112,8 +117,10 @@ def a_star_search(grid, src, dest, heuristic):
                     cell_details[new_i][new_j].parent_i = i
                     cell_details[new_i][new_j].parent_j = j
 
+    end_time = perf_counter()
+    execution_time = (end_time - start_time )*1000 # Calculate execution time in ms
     print("Destination not found")
-    return None
+    return None, execution_time  # Return None and execution time
 
 class PathfindingApp:
     def __init__(self, master, grid, path_manhattan, path_diagonal, src, dest):
@@ -124,7 +131,7 @@ class PathfindingApp:
         self.path_diagonal = path_diagonal
         self.src = src
         self.dest = dest
-        self.cell_size = 45
+        self.cell_size = 55
         self.master.state('zoomed')
 
         # Create a Canvas for scrollable content and add vertical scrollbar
@@ -152,7 +159,6 @@ class PathfindingApp:
         self.create_heading()
         self.create_layout()
         self.create_tables()
-        time.sleep(2)
         self.animate_paths()
 
     def _on_mousewheel(self, event):
@@ -205,10 +211,10 @@ class PathfindingApp:
         for j in range(len(self.grid[0])):
             self.canvas_manhattan.create_text(j * self.cell_size + self.cell_size // 2, 
                                                 len(self.grid) * self.cell_size + 10, 
-                                                text=str(j), fill='black', font=("Arial", 8))
+                                                text=str(j), fill='black', font=("Arial", 10))
             self.canvas_diagonal.create_text(j * self.cell_size + self.cell_size // 2, 
                                             len(self.grid) * self.cell_size + 10, 
-                                            text=str(j), fill='black', font=("Arial", 8))
+                                            text=str(j), fill='black', font=("Arial", 10))
 
         # Draw source and destination markers
         for canvas in [self.canvas_manhattan, self.canvas_diagonal]:
@@ -238,7 +244,7 @@ class PathfindingApp:
 
             headers = ["Step", "g(n)", "h(n)", "f(n)"]
             for col, header in enumerate(headers):
-                tk.Label(frame, text=header, borderwidth=1, relief="solid", padx=5, pady=5, font=("Arial", 10, "bold"), bg="#FFFF00").grid(row=1, column=col, sticky="nsew")
+                tk.Label(frame, text=header, borderwidth=1, relief="solid", pady=5, font=("Arial", 12, "bold"), bg="#FFFF00").grid(row=1, column=col, sticky="nsew")
 
             num_steps = max(len(self.path_manhattan), len(self.path_diagonal))
             for j in range(num_steps):
@@ -258,22 +264,36 @@ class PathfindingApp:
                 f_label.grid(row=j + 2, column=3, sticky="nsew")
                 self.f_labels.append(f_label)
 
-            exec_time_label = tk.Label(frame, text="Execution Time: ", font=("Arial", 10, "bold"))
+            exec_time_label = tk.Label(frame, text="Execution Time: ", font=("Arial", 12, "bold"))
             exec_time_label.grid(row=num_steps + 3, column=0, columnspan=4, sticky="w", padx=5)
             self.execution_time_labels.append(exec_time_label)
 
-            path_label = tk.Label(frame, text="Path: ", font=("Arial", 10, "bold"))
+            path_label = tk.Label(frame, text="Path: ", font=("Arial", 12, "bold"))
             path_label.grid(row=num_steps + 4, column=0, columnspan=4, sticky="w", padx=5)
             self.path_labels.append(path_label)
 
-            cost_label = tk.Label(frame, text="Total Cost: ", font=("Arial", 10, "bold"))
+            cost_label = tk.Label(frame, text="Total Cost: ", font=("Arial", 12, "bold"))
             cost_label.grid(row=num_steps + 5, column=0, columnspan=4, sticky="w", padx=5)
             self.total_cost_labels.append(cost_label)
 
-    def update_summary(self, index, execution_time, path, total_cost):
-        self.execution_time_labels[index].config(text=f"Execution Time: {execution_time:.2f} seconds")
-        self.path_labels[index].config(text=f"Path: {path}")
-        self.total_cost_labels[index].config(text=f"Total Cost: {total_cost:.2f}")
+    def update_summary(self, index, execution_time, path):
+        # Update execution time with precision of 2 decimal places
+        if isinstance(execution_time, (float, int)):
+            self.execution_time_labels[index].config(text=f"Execution Time: {execution_time:.6f} ms")
+        else:
+            self.execution_time_labels[index].config(text="Execution Time: N/A")
+        
+        # Update the path label, ensuring path is a list of tuples (x, y)
+        if isinstance(path, list) and all(isinstance(coord, tuple) and len(coord) == 2 for coord in path):
+            formatted_path = ' -> '.join(f"({coord[0]}, {coord[1]})" for coord in path)
+            self.path_labels[index].config(text=f"Path: {formatted_path}")
+            # Update the total length based on the number of steps in the path
+            num_steps = len(path)  # Calculate the number of steps from the path length
+            self.total_cost_labels[index].config(text=f"Total Steps: {num_steps}")
+        else:
+            self.path_labels[index].config(text="Path: N/A")
+            self.total_cost_labels[index].config(text="Total Steps: N/A")
+
 
     def animate_paths(self):
         self.animate_path(self.canvas_manhattan, self.path_manhattan, "Manhattan", 0)
@@ -316,7 +336,7 @@ class PathfindingApp:
                     canvas.create_text(adj_j * self.cell_size + self.cell_size // 2,
                                        adj_i * self.cell_size + self.cell_size // 2,
                                        text=f"g:{round(adj_g_n, 1)}\nh:{round(adj_h_n, 1)}\nf:{round(adj_f_n, 1)}",
-                                       font=("Arial", 8), fill="black")
+                                       font=("Arial", 10, 'bold'), fill="black")
 
             previous_point = (i, j)
             self.master.update()
@@ -334,37 +354,20 @@ class PathfindingApp:
 if __name__ == "__main__":
     file_path = 'input.txt'
     rows, cols, grid, src, dest = read_input(file_path)
+       
+    path_manhattan, execution_time_manhattan = a_star_search(grid, src, dest, "manhattan")
+    print(f"Execution Time: {execution_time_manhattan:.6f} ms")
+    
+    path_diagonal, execution_time_diagonal = a_star_search(grid, src, dest, "diagonal")
+    print(f"Execution Time: {execution_time_diagonal:.6f} ms")
 
-    # Run A* for Manhattan heuristic and measure execution time
-    start_time = time.time()
-    path_manhattan = a_star_search(grid, src, dest, 'manhattan')
-    execution_time_manhattan = time.time() - start_time
-
-    # Calculate total cost for Manhattan path using Euclidean distance
-    total_cost_manhattan = sum(
-        math.sqrt((path_manhattan[i][0] - path_manhattan[i - 1][0]) ** 2 +
-                  (path_manhattan[i][1] - path_manhattan[i - 1][1]) ** 2)
-        for i in range(1, len(path_manhattan))
-    ) if path_manhattan else 0
-
-    # Run A* for Diagonal heuristic and measure execution time
-    start_time = time.time()
-    path_diagonal = a_star_search(grid, src, dest, 'diagonal')
-    execution_time_diagonal = time.time() - start_time
-
-    # Calculate total cost for Diagonal path using Euclidean distance
-    total_cost_diagonal = sum(
-        math.sqrt((path_diagonal[i][0] - path_diagonal[i - 1][0]) ** 2 +
-                  (path_diagonal[i][1] - path_diagonal[i - 1][1]) ** 2)
-        for i in range(1, len(path_diagonal))
-    ) if path_diagonal else 0
 
     # Initialize the Tkinter app and update tables with the summary data
     root = tk.Tk()
     app = PathfindingApp(root, grid, path_manhattan, path_diagonal, src, dest)
 
     # Update the summary information at the bottom of each table
-    app.update_summary(0, execution_time_manhattan, path_manhattan, total_cost_manhattan)
-    app.update_summary(1, execution_time_diagonal, path_diagonal, total_cost_diagonal)
+    app.update_summary(0, execution_time_manhattan, path_manhattan)
+    app.update_summary(1, execution_time_diagonal, path_diagonal)
 
     root.mainloop()
