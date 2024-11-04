@@ -46,7 +46,7 @@ def calculate_h_value(row, col, dest, method):
     elif method == 'diagonal':
         dx = abs(row - dest[0])
         dy = abs(col - dest[1])
-        return max(dx, dy) + (math.sqrt(2) - 1) * min(dx, dy)
+        return max(dx, dy)
     return 0
 
 def trace_path(cell_details, dest):
