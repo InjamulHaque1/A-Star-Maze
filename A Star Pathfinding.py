@@ -141,9 +141,13 @@ class PathfindingApp:
         # Vertical scrollbar
         self.scroll_y = tk.Scrollbar(self.master, orient="vertical", command=self.main_canvas.yview)
         self.scroll_y.pack(side="right", fill="y")
+        
+        self.scroll_x = tk.Scrollbar(self.master, orient="horizontal", command=self.main_canvas.xview)
+        self.scroll_x.pack(side="bottom", fill="x")
 
         # Configure Canvas to use the scrollbar
         self.main_canvas.configure(yscrollcommand=self.scroll_y.set)
+        self.main_canvas.configure(yscrollcommand=self.scroll_x.set)
 
         # Create frame inside canvas
         self.scrollable_frame = tk.Frame(self.main_canvas)
@@ -168,7 +172,7 @@ class PathfindingApp:
     def create_heading(self):
         heading_frame = tk.Frame(self.scrollable_frame)
         heading_frame.grid(row=0, column=0, columnspan=3)
-        heading_label = tk.Label(heading_frame, text="Here is the dynamic table of Manhattan Heuristic and Diagonal Heuristic respectively:", font=("Calibri", 16, "bold"))
+        heading_label = tk.Label(heading_frame, text="Here is the dynamic graph of Manhattan Heuristic and Diagonal Heuristic respectively:", font=("Calibri", 16, "bold"))
         heading_label.pack()
 
     def create_layout(self):
@@ -203,9 +207,9 @@ class PathfindingApp:
         # Draw y-axis labels
         for i in range(len(self.grid)):
             self.canvas_manhattan.create_text(-20, i * self.cell_size + self.cell_size // 2, 
-                                                text=str(i), fill='black', font=("Arial", 8), anchor='e')
+                                                text=str(i), fill='black', font=("Arial", 10), anchor='e')
             self.canvas_diagonal.create_text(-20, i * self.cell_size + self.cell_size // 2, 
-                                            text=str(i), fill='black', font=("Arial", 8), anchor='e')
+                                            text=str(i), fill='black', font=("Arial", 10), anchor='e')
 
         # Draw x-axis labels
         for j in range(len(self.grid[0])):
@@ -264,15 +268,15 @@ class PathfindingApp:
                 f_label.grid(row=j + 2, column=3, sticky="nsew")
                 self.f_labels.append(f_label)
 
-            exec_time_label = tk.Label(frame, text="Execution Time: ", font=("Arial", 12, "bold"))
+            exec_time_label = tk.Label(frame, text="Execution Time: ", font=("Arial", 10, "bold"))
             exec_time_label.grid(row=num_steps + 3, column=0, columnspan=4, sticky="w", padx=5)
             self.execution_time_labels.append(exec_time_label)
 
-            path_label = tk.Label(frame, text="Path: ", font=("Arial", 12, "bold"))
+            path_label = tk.Label(frame, text="Path: ", font=("Arial", 10, "bold"))
             path_label.grid(row=num_steps + 4, column=0, columnspan=4, sticky="w", padx=5)
             self.path_labels.append(path_label)
 
-            cost_label = tk.Label(frame, text="Total Cost: ", font=("Arial", 12, "bold"))
+            cost_label = tk.Label(frame, text="Total Cost: ", font=("Arial", 10, "bold"))
             cost_label.grid(row=num_steps + 5, column=0, columnspan=4, sticky="w", padx=5)
             self.total_cost_labels.append(cost_label)
 
@@ -299,7 +303,6 @@ class PathfindingApp:
         self.animate_path(self.canvas_manhattan, self.path_manhattan, "Manhattan", 0)
         self.animate_path(self.canvas_diagonal, self.path_diagonal, "Diagonal", 1)
 
-
     def animate_path(self, canvas, path, heuristic, table_column):
         g_n = 0
         previous_point = None
@@ -307,10 +310,10 @@ class PathfindingApp:
         for index, (i, j) in enumerate(path):
             if previous_point is not None:
                 canvas.create_line(previous_point[1] * self.cell_size + self.cell_size // 2,
-                                   previous_point[0] * self.cell_size + self.cell_size // 2,
-                                   j * self.cell_size + self.cell_size // 2,
-                                   i * self.cell_size + self.cell_size // 2,
-                                   fill='red', width=2)
+                                previous_point[0] * self.cell_size + self.cell_size // 2,
+                                j * self.cell_size + self.cell_size // 2,
+                                i * self.cell_size + self.cell_size // 2,
+                                fill='red', width=3)
 
             if index > 0:
                 prev_i, prev_j = path[index - 1]
@@ -319,37 +322,28 @@ class PathfindingApp:
             h_n = calculate_h_value(i, j, self.dest, method=heuristic.lower())
             f_n = g_n + h_n
 
+            # Update the table with the current index and calculated values
             for k, val in enumerate([index + 1, round(g_n, 2), round(h_n, 2), round(f_n, 2)]):
                 tk.Label(self.table_frame.winfo_children()[table_column], text=str(val)).grid(row=index + 2, column=k)
 
+            # Draw the adjacent cells without showing their g, h, f values
             adjacent_cells = [(i + x, j + y) for x, y in [(0, 1), (1, 0), (0, -1), (-1, 0),
-                                                          (1, 1), (1, -1), (-1, 1), (-1, -1)]]
+                                                        (1, 1), (1, -1), (-1, 1), (-1, -1)]]
             for adj_i, adj_j in adjacent_cells:
                 if is_valid(adj_i, adj_j, len(self.grid), len(self.grid[0])) and is_unblocked(self.grid, adj_i, adj_j):
+                    # Calculate g, h, f for the adjacent cells without displaying them
                     adj_g_n = g_n + math.sqrt((adj_i - i) ** 2 + (adj_j - j) ** 2)
                     adj_h_n = calculate_h_value(adj_i, adj_j, self.dest, method=heuristic.lower())
                     adj_f_n = adj_g_n + adj_h_n
 
-                    canvas.create_rectangle(adj_j * self.cell_size, adj_i * self.cell_size,
-                                            (adj_j + 1) * self.cell_size, (adj_i + 1) * self.cell_size,
-                                            fill='lightgreen')
-                    canvas.create_text(adj_j * self.cell_size + self.cell_size // 2,
-                                       adj_i * self.cell_size + self.cell_size // 2,
-                                       text=f"g:{round(adj_g_n, 1)}\nh:{round(adj_h_n, 1)}\nf:{round(adj_f_n, 1)}",
-                                       font=("Arial", 10, 'bold'), fill="black")
-
-            previous_point = (i, j)
+            previous_point = (i, j)  # Update previous point for the next iteration
             self.master.update()
             time.sleep(0.3)
 
-            canvas.delete("adjacent")
-            
-        for (i, j) in path:
-            canvas.create_rectangle(j * self.cell_size, i * self.cell_size,
-                                    (j + 1) * self.cell_size, (i + 1) * self.cell_size,
-                                    fill='red')
+            canvas.delete("adjacent")  # Clear the adjacent highlights
 
-        canvas.delete("adjacent")
+        canvas.delete("adjacent")  # Ensure adjacent highlights are cleared
+
 
 if __name__ == "__main__":
     file_path = 'input.txt'
